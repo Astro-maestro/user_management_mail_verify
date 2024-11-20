@@ -56,12 +56,10 @@ class AuthController {
       }
 
       if (user.role !== "Admin" && !user.isVerified) {
-        return res
-          .status(403)
-          .json({
-            message:
-              "Account not verified. Please check your email for verification link.",
-          });
+        return res.status(403).json({
+          message:
+            "Account not verified. Please check your email for verification link.",
+        });
       }
 
       // Validate the password
@@ -138,12 +136,10 @@ class AuthController {
     const { userId } = req.user;
     try {
       const user = await UserRepository.getUserDashboard(userId);
-      res
-        .status(200)
-        .json({
-          message: `Welcome ${user.name}, we are glad to have you as a ${user.role}`,
-          user: user,
-        });
+      res.status(200).json({
+        message: `Welcome ${user.name}, we are glad to have you as a ${user.role}`,
+        user: user,
+      });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -170,7 +166,6 @@ class AuthController {
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "All fields are required." });
     }
-
 
     try {
       // Check if user already exists
@@ -221,7 +216,7 @@ class AuthController {
         <p>Email: ${user.email}</p>
         <p>Password: ${password}</p>
         <p>Thank you!</p>
-    `
+    `,
       };
 
       // Send verification email
@@ -239,30 +234,28 @@ class AuthController {
   // Confirm user email based on token
   async confirmation(req, res) {
     const { token, email } = req.params;
-  
+
     try {
       // Step 1: Find the token in the database
       const foundToken = await Token.findOne({ token });
       if (!foundToken) {
         console.log("Token not found");
-        return res.status(400).json({ message: "Verification link may be expired" });
+        return res
+          .status(400)
+          .json({ message: "Verification link may be expired" });
       }
-      
-  
+
       // Step 2: Find the user associated with the token and email
       const user = await User.findOne({ email, _id: foundToken._userId });
       if (!user) {
-        
         return res.status(404).json({ message: "User not found" });
       }
-      
-  
+
       // Step 3: Check if the user is already verified
       if (user.isVerified) {
-        
         return res.status(400).json({ message: "User is already verified" });
       }
-  
+
       // Step 4: Update user's verification status
       const userVerified = await User.findByIdAndUpdate(
         user._id,
@@ -270,20 +263,16 @@ class AuthController {
         { new: true }
       );
       if (!userVerified) {
-        
         return res.status(500).json({ message: "Failed to verify user" });
       }
-      
-  
+
       // Step 5: Remove the used token from the database
       await Token.deleteOne({ token });
-      
-  
-        // Step 6: Redirect to frontend login page based on user's role
-    const frontendUrl = `${process.env.FRONTEND_BASE_URL}/${user.role}/login`;
-    
-    return res.redirect(frontendUrl);
-  
+
+      // Step 6: Redirect to frontend login page based on user's role
+      const frontendUrl = `${process.env.FRONTEND_BASE_URL}/${user.role}/login`;
+
+      return res.redirect(frontendUrl);
     } catch (error) {
       console.error("Error during confirmation:", error);
       return res.status(500).json({ message: error.message });
@@ -292,21 +281,24 @@ class AuthController {
 
   async forgotPassword(req, res) {
     const { email } = req.body;
-    
+
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
     try {
       // Step 1: Check if user exists
-      const user = await User.findOne({email});
+      const user = await User.findOne({ email });
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       // Step 2: Generate a reset token
       const resetToken = crypto.randomBytes(32).toString("hex");
-      const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
 
       // Step 3: Save token with expiration (1 hour)
       await TokenRepository.createToken({
@@ -328,19 +320,29 @@ class AuthController {
         to: user.email,
         subject: "Password Reset Request",
         html: `
-          <p>Hello ${user.name},</p>
-          <p>You requested a password reset. Click the link below to reset your password:</p>
-          <a href="${resetUrl}" style="color: blue;">${resetUrl}</a>
-          <p>If you did not request this, please ignore this email.</p>
+            <p>Hello ${user.name},</p>
+            <p>You requested a password reset. Click the link below to reset your password:</p>
+            <a href="${resetUrl}" style="color: blue; text-decoration: underline;" target="_blank">
+              Reset Password
+            </a>
+            <p>Or copy and paste this link into your browser:</p>
+            <p>${resetUrl}</p>
+            <p>If you did not request this, please ignore this email.</p>
         `,
       };
 
       await utils.mailSender(req, res, transporter, mailOptions);
 
-      return res.status(200).json({ message: "Password reset email sent." , user: user });
+      return res
+        .status(200)
+        .json({ message: "Password reset email sent.", user: user });
     } catch (error) {
       console.error("Error in forgotPassword:", error);
-      return res.status(500).json({ message: "An error occurred while sending the password reset email." });
+      return res
+        .status(500)
+        .json({
+          message: "An error occurred while sending the password reset email.",
+        });
     }
   }
 
@@ -350,17 +352,24 @@ class AuthController {
     const { token } = req.params;
 
     if (!token || !newPassword) {
-      return res.status(400).json({ message: "Token and new password are required." });
+      return res
+        .status(400)
+        .json({ message: "Token and new password are required." });
     }
 
     try {
       // Step 1: Hash the token to match the stored hashed token
-      const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
 
       // Step 2: Find the token in the database
       const foundToken = await TokenRepository.findToken(hashedToken);
       if (!foundToken || foundToken.expiration < Date.now()) {
-        return res.status(400).json({ message: "Token is invalid or expired." });
+        return res
+          .status(400)
+          .json({ message: "Token is invalid or expired." });
       }
 
       // Step 3: Find the user associated with the token
@@ -376,16 +385,20 @@ class AuthController {
 
       // Step 5: Delete the reset token after use
       await TokenRepository.deleteTokenByUserId(user._id);
-      
 
-      res.status(200).json({ message: "Password reset successfully. Please log in with your new password." });
+      res
+        .status(200)
+        .json({
+          message:
+            "Password reset successfully. Please log in with your new password.",
+        });
     } catch (error) {
       console.error("Error in resetPassword:", error);
-      return res.status(500).json({ message: "An error occurred while resetting the password." });
+      return res
+        .status(500)
+        .json({ message: "An error occurred while resetting the password." });
     }
   }
-  
-  
 }
 
 module.exports = new AuthController();
